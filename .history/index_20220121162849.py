@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-    
 from src.logger import logger, loggerMapClicked, loggerRegisterBcoin, getLastBcoinDate
-from src.date import dateFormatted
 from cv2 import cv2
 from os import listdir
 from random import randint
@@ -12,7 +11,6 @@ import time
 import sys
 import yaml
 import subprocess
-import pyperclip
 
 if sys.platform != 'linux' and sys.platform != 'linux2':
     import pygetwindow
@@ -60,7 +58,7 @@ cat = """
 
 
 def get_linux_bombcrypto_windows():
-    stdout = (subprocess.Popen("xdotool search --name Bombcrypto", shell=True,stdout=subprocess.PIPE).communicate()[0].decode('utf-8').strip())
+    stdout = (subprocess.Popen("xdotool search --name bombcrypto", shell=True,stdout=subprocess.PIPE).communicate()[0].decode('utf-8').strip())
     windows = stdout.split('\n')
     return windows
 
@@ -362,16 +360,37 @@ def login():
         #TODO mto ele da erro e poco o botao n abre
         # time.sleep(10)
 
-        if clickBtn(images['select-wallet-2'], timeout=15):
-            # sometimes the sign popup appears imediately
-            login_attempts = login_attempts + 1
-            # print('sign button clicked')
-            # print('{} login attempt'.format(login_attempts))
-            if clickBtn(images['treasure-hunt-icon'], timeout = 15):
-                # print('sucessfully login, treasure hunt btn clicked')
-                login_attempts = 0
-            return
-            # click ok butto
+    if clickBtn(images['select-wallet-2'], timeout=8):
+        # sometimes the sign popup appears imediately
+        login_attempts = login_attempts + 1
+        # print('sign button clicked')
+        # print('{} login attempt'.format(login_attempts))
+        if clickBtn(images['treasure-hunt-icon'], timeout = 15):
+            # print('sucessfully login, treasure hunt btn clicked')
+            login_attempts = 0
+        return
+        # click ok button
+
+    if not clickBtn(images['select-wallet-1-no-hover'], ):
+        if clickBtn(images['select-wallet-1-hover'], threshold = ct['select_wallet_buttons'] ):
+            pass
+            # o ideal era que ele alternasse entre checar cada um dos 2 por um tempo 
+            # print('sleep in case there is no metamask text removed')
+            # time.sleep(20)
+    else:
+        pass
+        # print('sleep in case there is no metamask text removed')
+        # time.sleep(20)
+
+    if clickBtn(images['select-wallet-2'], timeout = 20):
+        login_attempts = login_attempts + 1
+        # print('sign button clicked')
+        # print('{} login attempt'.format(login_attempts))
+        # time.sleep(25)
+        if clickBtn(images['treasure-hunt-icon'], timeout=25):
+            # print('sucessfully login, treasure hunt btn clicked')
+            login_attempts = 0
+        # time.sleep(15)
 
     if clickBtn(images['ok'], timeout=5):
         pass
@@ -430,9 +449,9 @@ def refreshHeroes():
         logger('⚒️ Sending all heroes to work', 'green')
 
     buttonsClicked = 1
-    empty_scrolls_attempts = 5
+    empty_scrolls_attempts = c['scroll_attemps']
 
-    while(empty_scrolls_attempts >= 0):
+    while(empty_scrolls_attempts >0):
         if c['select_heroes_mode'] == 'full':
             buttonsClicked = clickFullBarButtons()
         elif c['select_heroes_mode'] == 'green':
@@ -440,12 +459,10 @@ def refreshHeroes():
         else:
             buttonsClicked = clickButtons()
 
-        clickFullBarButtons()
-
         sendHeroesHome()
 
-        #if buttonsClicked == 0:
-        empty_scrolls_attempts = empty_scrolls_attempts - 1
+        if buttonsClicked == 0:
+            empty_scrolls_attempts = empty_scrolls_attempts - 1
         scroll()
         time.sleep(2)
     logger('💪 {} heroes sent to work'.format(hero_clicks))
@@ -479,32 +496,13 @@ def getDigitsBcoin():
     else:
         return ''
 def getIdMetamask():
-    logger('Get id metamask')
     clickBtn(images['metamask'])
-    clickBtn(images['copy'], 15)
-    id = pyperclip.paste()
-    
-    buttons = positions(images['metamask'], threshold=ct['default'])
-    
-    if(len(buttons)>0):
-        x =  buttons[0][0]
-        y = buttons[0][1]
-        
-        moveToWithRandomness( x-400,y +100,1)
-        pyautogui.click()
-    
-    time.sleep(2)
-    if not len(id) > 10:
-        return 0
 
-    
-    return id
-
-def registerBcoin(idMeta):
+def registerBcoin():
     hour = dateFormatted('%H')
     minu = dateFormatted('%M')
     current_date = dateFormatted('%Y-%m-%d')
-    last_date = getLastBcoinDate(idMeta)
+    last_date = getLastBcoinDate()
 
     
     if last_date < current_date and hour == '01':
@@ -512,11 +510,11 @@ def registerBcoin(idMeta):
     	logger('Registering last bcoin')
 
     	clickBtn(images['chest'])
-    	time.sleep(8)
+    	time.sleep(4)
 
 
     	digits = getDigitsBcoin()
-    	loggerRegisterBcoin(digits, idMeta)
+    	loggerRegisterBcoin(digits)
     	
     	logger(digits)
     	clickBtn(images['x'])
@@ -549,7 +547,7 @@ def main():
     if sys.platform == 'linux' or sys.platform == 'linux2':
         bombcryptoWindows = get_linux_bombcrypto_windows()
     else:
-        bombcryptoWindows = pygetwindow.getWindowsWithTitle('Bombcrypto')
+        bombcryptoWindows = pygetwindow.getWindowsWithTitle('bombcrypto')
 
     #  Aqui ele percorre as janelas que estiver escrito bombcrypto
     for window in bombcryptoWindows:
@@ -560,16 +558,15 @@ def main():
             "new_map": 0,
             "check_for_captcha": 0,
             "refresh_heroes": 0,
-             "register_bcoin": 0,
-             "metamask_id": '0'
+             "register_bcoin": 0
         })
 
-   
+    getIdMetamask()
+    return
 
     if len(windows) >= 1:
         print('>>---> %d windows with the name bombcrypto were found' % len(windows))
 
-    
         while True:
             for currentWindow in windows:
 
@@ -581,22 +578,23 @@ def main():
 
                 time.sleep(2)
                 now = time.time()
-                
-                if currentWindow["metamask_id"] ==  '0':
-                    currentWindow["metamask_id"] = getIdMetamask()
-                    
+
+    
+                if now - currentWindow["register_bcoin"] >  60:
+                    currentWindow["register_bcoin"] = now
+                    registerBcoin()
+
+                if now - currentWindow["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
+                    currentWindow["check_for_captcha"] = now
+
+                if now - currentWindow["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
+                    currentWindow["heroes"] = now
+                    refreshHeroes()
+
                 if now - currentWindow["login"] > addRandomness(t['check_for_login'] * 60):
                     sys.stdout.flush()
                     currentWindow["login"] = now
                     login()
-
-                if now - currentWindow["register_bcoin"] >  60 and currentWindow["metamask_id"] != '0':
-                    currentWindow["register_bcoin"] = now
-                    registerBcoin(currentWindow["metamask_id"])
-               
-                if now - currentWindow["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
-                    currentWindow["heroes"] = now
-                    refreshHeroes()
 
                 if now - currentWindow["new_map"] > t['check_for_new_map_button']:
                     currentWindow["new_map"] = now
